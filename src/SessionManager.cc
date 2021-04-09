@@ -1,7 +1,7 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
 #include "zeek/zeek-config.h"
-#include "zeek/Sessions.h"
+#include "zeek/SessionManager.h"
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -31,27 +31,28 @@
 
 #include "zeek/analyzer/protocol/stepping-stone/events.bif.h"
 
-zeek::NetSessions* zeek::sessions;
+zeek::SessionManager* zeek::session_mgr = nullptr;
+zeek::SessionManager*& zeek::sessions = zeek::session_mgr;
 
 namespace zeek {
 
-NetSessions::NetSessions()
+SessionManager::SessionManager()
 	: stats(telemetry_mgr->GaugeFamily("zeek", "session_stats",
 	                                   {"tcp", "udp", "icmp"},
 	                                   "Zeek Session Stats", "1", false))
 	{
 	}
 
-NetSessions::~NetSessions()
+SessionManager::~SessionManager()
 	{
 	Clear();
 	}
 
-void NetSessions::Done()
+void SessionManager::Done()
 	{
 	}
 
-void NetSessions::ProcessTransportLayer(double t, const Packet* pkt, size_t remaining)
+void SessionManager::ProcessTransportLayer(double t, const Packet* pkt, size_t remaining)
 	{
 	const std::unique_ptr<IP_Hdr>& ip_hdr = pkt->ip_hdr;
 
@@ -60,7 +61,7 @@ void NetSessions::ProcessTransportLayer(double t, const Packet* pkt, size_t rema
 
 	if ( len < ip_hdr_len )
 		{
-		sessions->Weird("bogus_IP_header_lengths", pkt);
+		session_mgr->Weird("bogus_IP_header_lengths", pkt);
 		return;
 		}
 
@@ -207,7 +208,7 @@ void NetSessions::ProcessTransportLayer(double t, const Packet* pkt, size_t rema
 		}
 	}
 
-int NetSessions::ParseIPPacket(int caplen, const u_char* const pkt, int proto,
+int SessionManager::ParseIPPacket(int caplen, const u_char* const pkt, int proto,
                                IP_Hdr*& inner)
 	{
 	if ( proto == IPPROTO_IPV6 )
@@ -244,7 +245,7 @@ int NetSessions::ParseIPPacket(int caplen, const u_char* const pkt, int proto,
 	return 0;
 	}
 
-bool NetSessions::CheckHeaderTrunc(int proto, uint32_t len, uint32_t caplen,
+bool SessionManager::CheckHeaderTrunc(int proto, uint32_t len, uint32_t caplen,
                                    const Packet* p)
 	{
 	uint32_t min_hdr_len = 0;
@@ -278,7 +279,7 @@ bool NetSessions::CheckHeaderTrunc(int proto, uint32_t len, uint32_t caplen,
 	return false;
 	}
 
-Connection* NetSessions::FindConnection(Val* v)
+Connection* SessionManager::FindConnection(Val* v)
 	{
 	const auto& vt = v->GetType();
 	if ( ! IsRecord(vt->Tag()) )
@@ -340,7 +341,7 @@ Connection* NetSessions::FindConnection(Val* v)
 	return conn;
 	}
 
-void NetSessions::Remove(Session* s)
+void SessionManager::Remove(Session* s)
 	{
 	Connection* c = static_cast<Connection*>(s);
 
@@ -378,7 +379,7 @@ void NetSessions::Remove(Session* s)
 		}
 	}
 
-void NetSessions::Insert(Session* s)
+void SessionManager::Insert(Session* s)
 	{
 	assert(s->IsKeyValid());
 
@@ -399,7 +400,7 @@ void NetSessions::Insert(Session* s)
 		}
 	}
 
-void NetSessions::Drain()
+void SessionManager::Drain()
 	{
 	for ( const auto& entry : session_map )
 		{
@@ -409,7 +410,7 @@ void NetSessions::Drain()
 		}
 	}
 
-void NetSessions::Clear()
+void SessionManager::Clear()
 	{
 	for ( const auto& entry : session_map )
 		Unref(entry.second);
@@ -419,7 +420,7 @@ void NetSessions::Clear()
 	detail::fragment_mgr->Clear();
 	}
 
-void NetSessions::GetStats(SessionStats& s)
+void SessionManager::GetStats(SessionStats& s)
 	{
 	s.max_TCP_conns = stats.GetOrAdd({{"tcp", "max_conns"}}).Value();
 	s.num_TCP_conns = stats.GetOrAdd({{"tcp", "num_conns"}}).Value();
@@ -438,7 +439,7 @@ void NetSessions::GetStats(SessionStats& s)
 	s.num_packets = packet_mgr->PacketsProcessed();
 	}
 
-Connection* NetSessions::NewConn(const detail::ConnIDKey& k, double t, const ConnID* id,
+Connection* SessionManager::NewConn(const detail::ConnIDKey& k, double t, const ConnID* id,
                                  const u_char* data, int proto, uint32_t flow_label,
                                  const Packet* pkt)
 	{
@@ -498,7 +499,7 @@ Connection* NetSessions::NewConn(const detail::ConnIDKey& k, double t, const Con
 	return conn;
 	}
 
-Session* NetSessions::Lookup(detail::hash_t hash)
+Session* SessionManager::Lookup(detail::hash_t hash)
 	{
 	auto it = session_map.find(hash);
 	if ( it != session_map.end() )
@@ -507,7 +508,7 @@ Session* NetSessions::Lookup(detail::hash_t hash)
 	return nullptr;
 	}
 
-bool NetSessions::IsLikelyServerPort(uint32_t port, TransportProto proto) const
+bool SessionManager::IsLikelyServerPort(uint32_t port, TransportProto proto) const
 	{
 	// We keep a cached in-core version of the table to speed up the lookup.
 	static std::set<bro_uint_t> port_cache;
@@ -534,7 +535,7 @@ bool NetSessions::IsLikelyServerPort(uint32_t port, TransportProto proto) const
 	return port_cache.find(port) != port_cache.end();
 	}
 
-bool NetSessions::WantConnection(uint16_t src_port, uint16_t dst_port,
+bool SessionManager::WantConnection(uint16_t src_port, uint16_t dst_port,
                                  TransportProto transport_proto,
                                  uint8_t tcp_flags, bool& flip_roles)
 	{
@@ -581,7 +582,7 @@ bool NetSessions::WantConnection(uint16_t src_port, uint16_t dst_port,
 	return true;
 	}
 
-void NetSessions::Weird(const char* name, const Packet* pkt, const char* addl, const char* source)
+void SessionManager::Weird(const char* name, const Packet* pkt, const char* addl, const char* source)
 	{
 	const char* weird_name = name;
 
@@ -602,12 +603,12 @@ void NetSessions::Weird(const char* name, const Packet* pkt, const char* addl, c
 	reporter->Weird(weird_name, addl, source);
 	}
 
-void NetSessions::Weird(const char* name, const IP_Hdr* ip, const char* addl)
+void SessionManager::Weird(const char* name, const IP_Hdr* ip, const char* addl)
 	{
 	reporter->Weird(ip->SrcAddr(), ip->DstAddr(), name, addl);
 	}
 
-unsigned int NetSessions::ConnectionMemoryUsage()
+unsigned int SessionManager::ConnectionMemoryUsage()
 	{
 	unsigned int mem = 0;
 
@@ -621,7 +622,7 @@ unsigned int NetSessions::ConnectionMemoryUsage()
 	return mem;
 	}
 
-unsigned int NetSessions::ConnectionMemoryUsageConnVals()
+unsigned int SessionManager::ConnectionMemoryUsageConnVals()
 	{
 	unsigned int mem = 0;
 
@@ -635,7 +636,7 @@ unsigned int NetSessions::ConnectionMemoryUsageConnVals()
 	return mem;
 	}
 
-unsigned int NetSessions::MemoryAllocation()
+unsigned int SessionManager::MemoryAllocation()
 	{
 	if ( run_state::terminating )
 		// Connections have been flushed already.
@@ -649,7 +650,7 @@ unsigned int NetSessions::MemoryAllocation()
 		;
 	}
 
-void NetSessions::InsertSession(detail::hash_t hash, Session* session)
+void SessionManager::InsertSession(detail::hash_t hash, Session* session)
 	{
 	session_map[hash] = session;
 
@@ -681,7 +682,7 @@ void NetSessions::InsertSession(detail::hash_t hash, Session* session)
 		}
 	}
 
-detail::PacketFilter* NetSessions::GetPacketFilter(bool init)
+detail::PacketFilter* SessionManager::GetPacketFilter(bool init)
 	{
 	return packet_mgr->GetPacketFilter(init);
 	}

@@ -7,8 +7,6 @@
 
 namespace zeek {
 
-class NetSessions;
-
 namespace analyzer::stepping_stone {
 
 class SteppingStoneEndpoint;
