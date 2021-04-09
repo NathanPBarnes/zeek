@@ -2,9 +2,9 @@
 
 #include "zeek/analyzer/protocol/ayiya/AYIYA.h"
 
-#include "zeek/SessionManager.h"
 #include "zeek/Func.h"
 #include "zeek/packet_analysis/protocol/iptunnel/IPTunnel.h"
+#include "zeek/packet_analysis/protocol/ip/IP.h"
 
 namespace zeek::analyzer::ayiya {
 
@@ -47,7 +47,7 @@ void AYIYA_Analyzer::DeliverPacket(int len, const u_char* data, bool orig, uint6
 	inner_packet_offset = -1;
 
 	IP_Hdr* inner = nullptr;
-	int result = session_mgr->ParseIPPacket(len, data, next_header, inner);
+	int result = packet_analysis::IP::ParseIPPacket(len, data, next_header, inner);
 
 	if ( result == 0 )
 		{
