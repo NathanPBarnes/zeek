@@ -153,7 +153,7 @@ public:
 	/**
 	 * Returns the associated "connection" record.
 	 */
-	const RecordValPtr& ConnVal() override;
+	const RecordValPtr& GetVal() override;
 
 	/**
 	 * Append additional entries to the history field in the connection record.
@@ -190,7 +190,7 @@ public:
 
 	// Just a lower bound.
 	unsigned int MemoryAllocation() const override;
-	unsigned int MemoryAllocationConnVal() const override;
+	unsigned int MemoryAllocationVal() const override;
 
 	static uint64_t TotalConnections()
 		{ return total_connections; }
