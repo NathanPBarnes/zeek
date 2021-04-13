@@ -94,6 +94,11 @@ public:
 	 */
 	void RegisterProtocol(uint32_t identifier, AnalyzerPtr child);
 
+	/**
+	 * Flag for whether to report unknown protocols in ForwardPacket.
+	 */
+	bool report_unknown_protocols = true;
+
 protected:
 	friend class Manager;
 
