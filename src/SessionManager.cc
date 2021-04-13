@@ -385,7 +385,10 @@ void SessionManager::Insert(Session* s)
 	Session* old = nullptr;
 	detail::hash_t hash = s->HashKey();
 
-	old = Lookup(hash);
+	auto it = session_map.find(hash);
+	if ( it != session_map.end() )
+		old = it->second;
+
 	session_map.erase(hash);
 	InsertSession(hash, s);
 
@@ -496,15 +499,6 @@ Connection* SessionManager::NewConn(const detail::ConnIDKey& k, double t, const 
 		conn->Event(new_connection, nullptr);
 
 	return conn;
-	}
-
-Session* SessionManager::Lookup(detail::hash_t hash)
-	{
-	auto it = session_map.find(hash);
-	if ( it != session_map.end() )
-		return it->second;
-
-	return nullptr;
 	}
 
 bool SessionManager::IsLikelyServerPort(uint32_t port, TransportProto proto) const

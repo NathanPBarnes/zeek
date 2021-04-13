@@ -40,7 +40,7 @@ struct SessionStats {
 	uint64_t num_packets;
 };
 
-class SessionManager {
+class SessionManager final {
 public:
 	SessionManager();
 	~SessionManager();
@@ -139,15 +139,13 @@ public:
 	// TODO: should this move somewhere else?
 	analyzer::tcp::TCPStateStats tcp_stats;	// keeps statistics on TCP states
 
-protected:
+private:
 
 	using SessionMap = std::map<detail::hash_t, Session*>;
 
 	Connection* NewConn(const detail::ConnIDKey& k, double t, const ConnID* id,
 	                    const u_char* data, int proto, uint32_t flow_label,
 	                    const Packet* pkt);
-
-	Session* Lookup(detail::hash_t hash);
 
 	// Returns true if the port corresonds to an application
 	// for which there's a Bro analyzer (even if it might not
