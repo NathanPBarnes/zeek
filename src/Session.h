@@ -49,11 +49,21 @@ public:
 	 */
 	virtual void Done() = 0;
 
-	// Keys are only considered valid for a session when the session is
-	// stored by the SessionManager. If it is removed, the key will be
-	// marked as invalid.
-	virtual const std::unique_ptr<detail::HashKey>& HashKey() const = 0;
+	/**
+	 * Returns the hash key for the session. This must be the same value for
+	 * all sessions with the same key (e.g. the 5-tuple for Connections). It
+	 * is used as the key for storing the session in the SessionManager.
+	 */
+	virtual detail::hash_t HashKey() const = 0;
+
+	/**
+	 * Set the key as invalid.
+	 */
 	virtual void ClearKey() = 0;
+
+	/**
+	 * Return whether the key is valid.
+	 */
 	virtual bool IsKeyValid() const = 0;
 
 	double StartTime() const		{ return start_time; }

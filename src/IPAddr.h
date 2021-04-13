@@ -9,6 +9,7 @@
 #include <memory>
 
 #include "zeek/threading/SerialTypes.h"
+#include "zeek/Hash.h"
 
 typedef in_addr in4_addr;
 
@@ -19,16 +20,16 @@ struct ConnID;
 
 namespace detail {
 
-class HashKey;
-
-struct ConnIDKey {
+class ConnIDKey {
+public:
 	in6_addr ip1;
 	in6_addr ip2;
 	uint16_t port1;
 	uint16_t port2;
 	TransportProto transport;
+	detail::hash_t hash_key;
 
-	ConnIDKey() : port1(0), port2(0), transport(TRANSPORT_UNKNOWN)
+	ConnIDKey() : port1(0), port2(0), transport(TRANSPORT_UNKNOWN), hash_key(0)
 		{
 		memset(&ip1, 0, sizeof(in6_addr));
 		memset(&ip2, 0, sizeof(in6_addr));
@@ -46,15 +47,7 @@ struct ConnIDKey {
 	bool operator>=(const ConnIDKey& rhs) const { return memcmp(this, &rhs, sizeof(ConnIDKey)) >= 0; }
 	bool operator>(const ConnIDKey& rhs) const { return memcmp(this, &rhs, sizeof(ConnIDKey)) > 0; }
 
-	ConnIDKey& operator=(const ConnIDKey& rhs)
-		{
-		if ( this != &rhs )
-			memcpy(this, &rhs, sizeof(ConnIDKey));
-
-		return *this;
-		}
-
-	std::unique_ptr<HashKey> GetHashKey() const;
+	ConnIDKey& operator=(const ConnIDKey& rhs);
 };
 
 /**
@@ -453,6 +446,7 @@ public:
 	static const IPAddr v6_unspecified;
 
 private:
+
 	friend class IPPrefix;
 
 	/**

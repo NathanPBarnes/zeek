@@ -32,7 +32,6 @@ Connection::Connection(SessionManager* s, const detail::ConnIDKey& k, double t,
 	{
 	sessions = s;
 	key = k;
-	hash_key = k.GetHashKey();
 	key_valid = true;
 
 	orig_addr = id->src_addr;

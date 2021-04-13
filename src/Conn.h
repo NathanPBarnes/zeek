@@ -114,13 +114,9 @@ public:
 	// connection is in the session map. If it is removed, the key
 	// should be marked invalid.
 	const detail::ConnIDKey& Key() const	{ return key; }
-	const std::unique_ptr<detail::HashKey>& HashKey() const override
-		{ return hash_key; }
-	void ClearKey() override
-		{
-		key_valid = false;
-		hash_key.reset();
-		}
+	detail::hash_t HashKey() const override
+		{ return key.hash_key; }
+	void ClearKey() override			{ key_valid = false; }
 	bool IsKeyValid() const	override	{ return key_valid; }
 
 	const IPAddr& OrigAddr() const		{ return orig_addr; }
@@ -266,7 +262,6 @@ protected:
 	std::shared_ptr<EncapsulationStack> encapsulation; // tunnels
 
 	detail::ConnIDKey key;
-	std::unique_ptr<detail::HashKey> hash_key;
 	bool key_valid;
 
 	unsigned int skip:1;

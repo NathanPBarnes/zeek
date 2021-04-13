@@ -67,9 +67,9 @@ connection_established: [orig_h=2001:470:4867:99::21, orig_p=55647/tcp, resp_h=2
 connection_state_remove: [orig_h=2001:470:4867:99::21, orig_p=55785/tcp, resp_h=2001:470:1f11:81f:c999:d94:aa7c:2e3e, resp_p=49189/tcp]
     orig_flow 267377
     resp_flow 126027
-connection_state_remove: [orig_h=2001:470:1f11:81f:c999:d94:aa7c:2e3e, orig_p=49185/tcp, resp_h=2001:470:4867:99::21, resp_p=21/tcp]
-    orig_flow 0
-    resp_flow 7407
 connection_state_remove: [orig_h=2001:470:4867:99::21, orig_p=55647/tcp, resp_h=2001:470:1f11:81f:c999:d94:aa7c:2e3e, resp_p=49190/tcp]
     orig_flow 355265
     resp_flow 126028
+connection_state_remove: [orig_h=2001:470:1f11:81f:c999:d94:aa7c:2e3e, orig_p=49185/tcp, resp_h=2001:470:4867:99::21, resp_p=21/tcp]
+    orig_flow 0
+    resp_flow 7407

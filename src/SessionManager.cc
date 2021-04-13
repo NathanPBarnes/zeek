@@ -138,7 +138,7 @@ void SessionManager::ProcessTransportLayer(double t, const Packet* pkt, size_t r
 
 	// FIXME: The following is getting pretty complex. Need to split up
 	// into separate functions.
-	auto it = session_map.find(key.GetHashKey()->Hash());
+	auto it = session_map.find(key.hash_key);
 	if (it != session_map.end() )
 		conn = static_cast<Connection*>(it->second);
 
@@ -146,7 +146,7 @@ void SessionManager::ProcessTransportLayer(double t, const Packet* pkt, size_t r
 		{
 		conn = NewConn(key, t, &id, data, proto, ip_hdr->FlowLabel(), pkt);
 		if ( conn )
-			InsertSession(key.GetHashKey()->Hash(), conn);
+			InsertSession(key.hash_key, conn);
 		}
 	else
 		{
@@ -158,7 +158,7 @@ void SessionManager::ProcessTransportLayer(double t, const Packet* pkt, size_t r
 			Remove(conn);
 			conn = NewConn(key, t, &id, data, proto, ip_hdr->FlowLabel(), pkt);
 			if ( conn )
-				InsertSession(key.GetHashKey()->Hash(), conn);
+				InsertSession(key.hash_key, conn);
 			}
 		else
 			{
@@ -334,7 +334,7 @@ Connection* SessionManager::FindConnection(Val* v)
 	detail::ConnIDKey key = detail::BuildConnIDKey(id);
 
 	Connection* conn = nullptr;
-	auto it = session_map.find(key.GetHashKey()->Hash());
+	auto it = session_map.find(key.hash_key);
 	if ( it != session_map.end() )
 		conn = static_cast<Connection*>(it->second);
 
@@ -347,7 +347,6 @@ void SessionManager::Remove(Session* s)
 
 	if ( s->IsKeyValid() )
 		{
-		const detail::ConnIDKey& key = c->Key();
 		s->CancelTimers();
 
 		s->Done();
@@ -356,7 +355,7 @@ void SessionManager::Remove(Session* s)
 		// Clears out the session's copy of the key so that if the
 		// session has been Ref()'d somewhere, we know that on a future
 		// call to Remove() that it's no longer in the map.
-		detail::hash_t hash = s->HashKey()->Hash();
+		detail::hash_t hash = s->HashKey();
 		s->ClearKey();
 
 		if ( session_map.erase(hash) == 0 )
@@ -384,7 +383,7 @@ void SessionManager::Insert(Session* s)
 	assert(s->IsKeyValid());
 
 	Session* old = nullptr;
-	detail::hash_t hash = s->HashKey()->Hash();
+	detail::hash_t hash = s->HashKey();
 
 	old = Lookup(hash);
 	session_map.erase(hash);

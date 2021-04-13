@@ -15,15 +15,19 @@
 namespace zeek {
 
 const IPAddr IPAddr::v4_unspecified = IPAddr(in4_addr{});
-
 const IPAddr IPAddr::v6_unspecified = IPAddr();
 
-std::unique_ptr<detail::HashKey> detail::ConnIDKey::GetHashKey() const
+namespace detail {
+
+ConnIDKey& ConnIDKey::operator=(const ConnIDKey& rhs)
 	{
-	return std::make_unique<detail::HashKey>(this, sizeof(*this));
+	if ( this != &rhs )
+		memcpy(this, &rhs, sizeof(rhs));
+
+	return *this;
 	}
 
-detail::ConnIDKey detail::BuildConnIDKey(const ConnID& id)
+ConnIDKey BuildConnIDKey(const ConnID& id)
 	{
 	ConnIDKey key;
 
@@ -49,8 +53,16 @@ detail::ConnIDKey detail::BuildConnIDKey(const ConnID& id)
 
 	key.transport = id.proto;
 
+	// This never gets updated if the key fields change at all, but that
+	// shouldn't ever happen. Once a key is created, the key shouldn't
+	// change.
+	HashKey hk(&key, sizeof(key));
+	key.hash_key = hk.Hash();
+
 	return key;
 	}
+
+} // namespace detail
 
 IPAddr::IPAddr(const String& s)
 	{
