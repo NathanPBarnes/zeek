@@ -59,7 +59,7 @@ bool RuleConditionUDPState::DoMatch(Rule* rule, RuleEndpointState* state,
 	{
 	analyzer::Analyzer* root = state->GetAnalyzer()->Conn()->GetRootAnalyzer();
 
-	if ( ! root || ! root->IsAnalyzer("UDP") )
+	if ( ! root || ! ( root->IsAnalyzer("UDP") || root->IsAnalyzer("UDPTRANSPORT") ) )
 		return false;
 
 	if ( states & RULE_STATE_STATELESS )
