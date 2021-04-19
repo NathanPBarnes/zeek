@@ -186,6 +186,8 @@ public:
 	 */
 	void DeleteTimer(double t);
 
+	virtual std::string TransportIdentifier() const = 0;
+
 protected:
 
 	friend class detail::SessionTimer;
