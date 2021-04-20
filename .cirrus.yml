@@ -34,6 +34,7 @@ ci_template: &CI_TEMPLATE
     ( $CIRRUS_REPO_NAME == 'zeek' &&
       (
       $CIRRUS_BRANCH == 'master' ||
+      $CIRRUS_BRANCH == 'topic/timw/mobile-ipv6-test' ||
       $CIRRUS_BRANCH =~ 'release/.*'
       )
     )
