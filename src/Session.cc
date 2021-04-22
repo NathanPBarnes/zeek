@@ -15,7 +15,7 @@ namespace zeek {
 namespace detail {
 
 void SessionTimer::Init(Session* arg_conn, timer_func arg_timer,
-                           bool arg_do_expire)
+                        bool arg_do_expire)
 	{
 	conn = arg_conn;
 	timer = arg_timer;
@@ -45,6 +45,85 @@ void SessionTimer::Dispatch(double t, bool is_expire)
 
 	if ( conn->RefCnt() < 1 )
 		reporter->InternalError("reference count inconsistency in SessionTimer::Dispatch");
+	}
+
+SessionKey::SessionKey(const void* session, size_t size, bool copy) : size(size)
+	{
+	data = reinterpret_cast<const uint8_t*>(session);
+	if ( copy )
+		CopyData();
+	}
+
+SessionKey::SessionKey(SessionKey&& rhs)
+	{
+	data = rhs.data;
+	size = rhs.size;
+	copied = rhs.copied;
+
+	rhs.data = nullptr;
+	rhs.size = 0;
+	rhs.copied = false;
+	}
+
+SessionKey& SessionKey::operator=(SessionKey&& rhs)
+	{
+	if ( this != &rhs )
+		{
+		data = rhs.data;
+		size = rhs.size;
+		copied = rhs.copied;
+
+		rhs.data = nullptr;
+		rhs.size = 0;
+		rhs.copied = false;
+		}
+
+	return *this;
+	}
+
+SessionKey::~SessionKey()
+	{
+	if ( copied )
+		delete [] data;
+	}
+
+void SessionKey::CopyData()
+	{
+	if ( copied )
+		return;
+
+	copied = true;
+
+	uint8_t *temp = new uint8_t[size];
+	memcpy(temp, data, size);
+	data = temp;
+	}
+
+bool SessionKey::operator<(const SessionKey& rhs) const
+	{
+	if ( size != rhs.size )
+		return size < rhs.size;
+
+	return memcmp(data, rhs.data, size) < 0;
+	}
+
+bool SessionKey::Print() const
+	{
+	printf("size: %lu  copied: %d\n", size, copied);
+	int line = 0;
+	for ( size_t i = 0; i < size; i++ )
+		{
+		line++;
+		printf("%02x ", data[i]);
+		if ( line % 31 == 0 )
+			{
+			printf("\n");
+			line = 0;
+			}
+		}
+	printf("\n");
+
+	return true;
 	}
 
 } // namespace detail

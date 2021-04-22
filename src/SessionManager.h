@@ -14,7 +14,10 @@
 
 namespace zeek {
 
-namespace detail { class PacketFilter; }
+namespace detail {
+	class PacketFilter;
+	class SessionKey;
+}
 
 class EncapsulationStack;
 class Packet;
@@ -194,7 +197,7 @@ private:
 		BlockMap entries;
 	};
 
-	using SessionMap = std::map<detail::hash_t, Session*>;
+	using SessionMap = std::map<detail::SessionKey, Session*>;
 
 	Connection* NewConn(const detail::ConnIDKey& k, double t, const ConnID* id,
 	                    const u_char* data, int proto, uint32_t flow_label,
@@ -227,7 +230,7 @@ private:
 	// the new one.  Connection count stats get updated either way (so most
 	// cases should likely check that the key is not already in the map to
 	// avoid unnecessary incrementing of connecting counts).
-	void InsertSession(detail::hash_t hash, Session* session);
+	void InsertSession(detail::SessionKey hash, Session* session);
 
 	SessionMap session_map;
 	StatBlocks stats;

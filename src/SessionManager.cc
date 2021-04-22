@@ -126,20 +126,21 @@ void SessionManager::ProcessTransportLayer(double t, const Packet* pkt, size_t r
 		return;
 	}
 
-	detail::ConnIDKey key = detail::BuildConnIDKey(id);
+	detail::ConnIDKey conn_key = detail::BuildConnIDKey(id);
+	detail::SessionKey key(&conn_key, sizeof(conn_key), false);
 	Connection* conn = nullptr;
 
 	// FIXME: The following is getting pretty complex. Need to split up
 	// into separate functions.
-	auto it = session_map.find(key.hash_key);
+	auto it = session_map.find(key);
 	if (it != session_map.end() )
 		conn = static_cast<Connection*>(it->second);
 
 	if ( ! conn )
 		{
-		conn = NewConn(key, t, &id, data, proto, ip_hdr->FlowLabel(), pkt);
+		conn = NewConn(conn_key, t, &id, data, proto, ip_hdr->FlowLabel(), pkt);
 		if ( conn )
-			InsertSession(key.hash_key, conn);
+			InsertSession(std::move(key), conn);
 		}
 	else
 		{
@@ -149,9 +150,9 @@ void SessionManager::ProcessTransportLayer(double t, const Packet* pkt, size_t r
 			conn->Event(connection_reused, nullptr);
 
 			Remove(conn);
-			conn = NewConn(key, t, &id, data, proto, ip_hdr->FlowLabel(), pkt);
+			conn = NewConn(conn_key, t, &id, data, proto, ip_hdr->FlowLabel(), pkt);
 			if ( conn )
-				InsertSession(key.hash_key, conn);
+				InsertSession(std::move(key), conn);
 			}
 		else
 			{
@@ -324,10 +325,11 @@ Connection* SessionManager::FindConnection(Val* v)
 	id.is_one_way = false;	// ### incorrect for ICMP connections
 	id.proto = orig_portv->PortType();
 
-	detail::ConnIDKey key = detail::BuildConnIDKey(id);
+	detail::ConnIDKey conn_key = detail::BuildConnIDKey(id);
+	detail::SessionKey key(&conn_key, sizeof(conn_key), false);
 
 	Connection* conn = nullptr;
-	auto it = session_map.find(key.hash_key);
+	auto it = session_map.find(key);
 	if ( it != session_map.end() )
 		conn = static_cast<Connection*>(it->second);
 
@@ -348,10 +350,15 @@ void SessionManager::Remove(Session* s)
 		// Clears out the session's copy of the key so that if the
 		// session has been Ref()'d somewhere, we know that on a future
 		// call to Remove() that it's no longer in the map.
-		detail::hash_t hash = s->HashKey();
-		s->ClearKey();
+		detail::SessionKey key = s->SessionKey(false);
 
-		if ( session_map.erase(hash) == 0 )
+		// printf("\nremoving: size: %lu\n", session_map.size());
+		// key.Print();
+		// printf("existing:\n");
+		// for ( const auto& entry : session_map )
+		// 	entry.first.Print();
+
+		if ( session_map.erase(key) == 0 )
 			reporter->InternalWarning("connection missing");
 		else
 			{
@@ -359,6 +366,7 @@ void SessionManager::Remove(Session* s)
 				stat_block->num.Dec();
 			}
 
+		s->ClearKey();
 		Unref(s);
 		}
 	}
@@ -368,14 +376,14 @@ void SessionManager::Insert(Session* s)
 	assert(s->IsKeyValid());
 
 	Session* old = nullptr;
-	detail::hash_t hash = s->HashKey();
+	detail::SessionKey key = s->SessionKey(true);
 
-	auto it = session_map.find(hash);
+	auto it = session_map.find(key);
 	if ( it != session_map.end() )
 		old = it->second;
 
-	session_map.erase(hash);
-	InsertSession(hash, s);
+	session_map.erase(key);
+	InsertSession(std::move(key), s);
 
 	if ( old && old != s )
 		{
@@ -430,8 +438,8 @@ void SessionManager::GetStats(SessionStats& s)
 	}
 
 Connection* SessionManager::NewConn(const detail::ConnIDKey& k, double t, const ConnID* id,
-                                 const u_char* data, int proto, uint32_t flow_label,
-                                 const Packet* pkt)
+                                    const u_char* data, int proto, uint32_t flow_label,
+                                    const Packet* pkt)
 	{
 	// FIXME: This should be cleaned up a bit, it's too protocol-specific.
 	// But I'm not yet sure what the right abstraction for these things is.
@@ -631,9 +639,14 @@ unsigned int SessionManager::MemoryAllocation()
 		;
 	}
 
-void SessionManager::InsertSession(detail::hash_t hash, Session* session)
+void SessionManager::InsertSession(detail::SessionKey key, Session* session)
 	{
-	session_map[hash] = session;
+	key.CopyData();
+	session_map.insert_or_assign(std::move(key), session);
+
+	// printf("\ninserted new\n");
+	// for ( const auto& entry : session_map )
+	// 	entry.first.Print();
 
 	std::string protocol = session->TransportIdentifier();
 

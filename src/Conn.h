@@ -114,8 +114,8 @@ public:
 	// connection is in the session map. If it is removed, the key
 	// should be marked invalid.
 	const detail::ConnIDKey& Key() const	{ return key; }
-	detail::hash_t HashKey() const override
-		{ return key.hash_key; }
+	detail::SessionKey SessionKey(bool copy) const override
+		{ return detail::SessionKey{&key, sizeof(key), copy}; }
 	void ClearKey() override			{ key_valid = false; }
 	bool IsKeyValid() const	override	{ return key_valid; }
 

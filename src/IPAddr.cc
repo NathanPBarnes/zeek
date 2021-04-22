@@ -53,12 +53,6 @@ ConnIDKey BuildConnIDKey(const ConnID& id)
 
 	key.transport = id.proto;
 
-	// This never gets updated if the key fields change at all, but that
-	// shouldn't ever happen. Once a key is created, the key shouldn't
-	// change.
-	HashKey hk(&key, sizeof(key));
-	key.hash_key = hk.Hash();
-
 	return key;
 	}
 

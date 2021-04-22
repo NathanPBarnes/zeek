@@ -27,9 +27,8 @@ public:
 	uint16_t port1;
 	uint16_t port2;
 	TransportProto transport;
-	detail::hash_t hash_key;
 
-	ConnIDKey() : port1(0), port2(0), transport(TRANSPORT_UNKNOWN), hash_key(0)
+	ConnIDKey() : port1(0), port2(0), transport(TRANSPORT_UNKNOWN)
 		{
 		memset(&ip1, 0, sizeof(in6_addr));
 		memset(&ip2, 0, sizeof(in6_addr));

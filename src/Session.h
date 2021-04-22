@@ -15,8 +15,11 @@ class RecordVal;
 using RecordValPtr = IntrusivePtr<RecordVal>;
 class Session;
 
-namespace detail { class SessionTimer; }
 namespace analyzer { class Analyzer; }
+namespace detail {
+	class SessionTimer;
+	class SessionKey;
+}
 
 typedef void (Session::*timer_func)(double t);
 
@@ -50,11 +53,13 @@ public:
 	virtual void Done() = 0;
 
 	/**
-	 * Returns the hash key for the session. This must be the same value for
-	 * all sessions with the same key (e.g. the 5-tuple for Connections). It
-	 * is used as the key for storing the session in the SessionManager.
+	 * Returns a key for the session. This is used as the key for storing
+	 * the session in SessionManager.
+	 *
+	 * @param copy Flag to indicate that the key returned has a copy of the
+	 * key data instead of just a pointer to it.
 	 */
-	virtual detail::hash_t HashKey() const = 0;
+	virtual detail::SessionKey SessionKey(bool copy) const = 0;
 
 	/**
 	 * Set the key as invalid.
@@ -186,6 +191,10 @@ public:
 	 */
 	void DeleteTimer(double t);
 
+	/**
+	 * Returns a string representation of the transport protocol referenced by the
+	 * session. This is used by SessionManager for statistics.
+	 */
 	virtual std::string TransportIdentifier() const = 0;
 
 protected:
@@ -236,7 +245,6 @@ protected:
 	unsigned int is_active:1;
 	unsigned int record_packets:1, record_contents:1;
 	unsigned int record_current_packet:1, record_current_content:1;
-
 };
 
 namespace detail {
@@ -258,6 +266,29 @@ protected:
 	Session* conn;
 	timer_func timer;
 	bool do_expire;
+};
+
+class SessionKey final {
+public:
+	SessionKey(const void* session, size_t size, bool copy=false);
+	~SessionKey();
+
+	// Implement move semantics for SessionKey, since they're used as keys
+	// in a map and copying them would cause double-free issues. Adding this
+	// constructor and operator explicitly disables the equivalent copy
+	// operations.
+	SessionKey(SessionKey&& rhs);
+	SessionKey& operator=(SessionKey&& rhs);
+
+	void CopyData();
+
+	bool operator<(const SessionKey& rhs) const;
+	bool Print() const;
+
+private:
+	const uint8_t* data = nullptr;
+	size_t size = 0;
+	bool copied = false;
 };
 
 } // namespace detail
